@@ -1,0 +1,16 @@
+name = "SumSpacesMathLink"
+uuid = "bd497e01-8aca-4c74-8213-408995a2f85a"
+authors = ["john.papad "]
+version = "0.1.0"
+
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MathLink = "18c93696-a329-5786-9845-8443133fa0b4"
+SumSpaces = "c93c2084-ed22-405a-a842-63a57ee579bf"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
