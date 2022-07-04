@@ -1,3 +1,3 @@
-using Test, SumSpaces
+using Test, SumSpacesMathLink
 
 include("test_mathematica.jl")

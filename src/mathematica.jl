@@ -1,10 +1,3 @@
-# using MathLink
-
-"""
-Github checks does not like MathLink.jl. So we keep all the Mathematica routines here and should 
-self-test before commiting. 
-"""
-
 # This first computes an FFT approximation of the inverse Fourier Transform 
 # and then adds corrections using Mathematica routines for the evaluation of
 # the inverse Fourier Transform integral at the points xx1 for ̃U₋₁ and V₀ 
@@ -57,16 +50,30 @@ function mathematica_corrections(λ::Number, μ::Number, η::Number, x::Abstract
         error("mathematica_correction currently can only handle translations of the reference element [-1,1].")
     end
     
-    (ywT0, yU_1, ywT1, yU0) = uS
+    (yywT0, yyU_1, yywT1, yyU0) = uS
     xx1 = Array(xx1)
     xx2 = Array(xx2)
     
-    ywT0[1] = ywT0[1][x.!=0]; yU_1[1] = yU_1[1][x.!=0]; 
-    ywT1[1] = ywT1[1][x.!=0]; yU0[1] = yU0[1][x.!=0];
-    x = x[x.!=0]
+    # Find common points between x and xx1/xx2
+    if intersect(x, xx1) != []
+        c1 = x .== xx1 
+    else
+        c1 = Int.(zeros(length(x)))
+    end 
+    if intersect(x, xx2) != []
+        c2 = x .== xx2
+    else 
+        c2 = Int.(zeros(length(x)))
+    end
 
-    x1 = vcat(x, xx1); perm1 = sortperm(x1); x1 = sort(x1); 
-    x2 = vcat(x, xx2); perm2 = sortperm(x2); x2 = sort(x2); 
+    # Remove any common points from given support functions 
+    ywT0 = [yywT0[1][c1.==0]]; yU_1 = [yyU_1[1][c1.==0]]; 
+    ywT1 = [yywT1[1][c2.==0]]; yU0 = [yyU0[1][c2.==0]];
+    x1 = x[c1.==0]; x2 = x[c2.==0]
+
+    # Add extra points to be computed
+    x1 = vcat(x1, xx1); perm1 = sortperm(x1); x1 = sort(x1); 
+    x2 = vcat(x2, xx2); perm2 = sortperm(x2); x2 = sort(x2); 
 
     if ~isdir("uS-lmbda-$λ-mu-$μ-eta-$η")
         mkdir("uS-lmbda-$λ-mu-$μ-eta-$η")
