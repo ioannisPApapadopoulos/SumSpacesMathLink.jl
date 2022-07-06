@@ -5,19 +5,19 @@
 # These are then interpolated via Interpolations.jl
 
 function fft_mathematica_supporter_functions(λ::Number, μ::Number, η::Number; W::Real=1000., δ::Real=0.001, 
-    a::AbstractVector=[-1.,1.], N::Int=5, stabilise::Bool=false,
+    I::AbstractVector=[-1.,1.], N::Int=5, stabilise::Bool=false,
     xx1=-10:0.01:10, xx2=-1.05:0.01:1.05, maxrecursion=100)
 
     if λ == μ == η ≈ 0 error("Special case, use fft_supporter_functions instead.") end
     
-    s = unique(2. ./ (a[2:end] - a[1:end-1]))
+    s = unique(2. ./ (I[2:end] - I[1:end-1]))
     if s != [1.0]
         error("mathematica_correction currently can only handle translations of the reference element [-1,1].")
     end
     
     (x, uS) = supporter_functions(λ, μ, η, W=W, δ=δ, s=s, N=N, stabilise=stabilise)
-    (x1, x2, uS) = mathematica_correction(λ, μ, η, x, uS, s, N, stabilise=stabilise, xx1=xx1, xx2=xx2, maxrecursion=maxrecursion)
-    return interpolate_supporter_functions(x1, x2, uS, a, s)
+    (x1, x2, uS) = mathematica_corrections(λ, μ, η, x, uS, s, N, stabilise=stabilise, xx1=xx1, xx2=xx2, maxrecursion=maxrecursion)
+    return interpolate_supporter_functions(x1, x2, uS, I, s)
 end
 
 # This function parses the output by Mathematica to something more useful for Julia.
@@ -44,8 +44,7 @@ end
 function mathematica_corrections(λ::Number, μ::Number, η::Number, x::AbstractVector, 
     uS::NTuple{4, Vector}, s::AbstractVector, N::Int; stabilise::Bool=false, 
     xx1::AbstractVector=-10:0.01:10, xx2::AbstractVector=-1.05:0.01:1.05, maxrecursion::Int=10)
-    
-    
+
     if s != [1.0]
         error("mathematica_correction currently can only handle translations of the reference element [-1,1].")
     end
@@ -53,23 +52,16 @@ function mathematica_corrections(λ::Number, μ::Number, η::Number, x::Abstract
     (yywT0, yyU_1, yywT1, yyU0) = uS
     xx1 = Array(xx1)
     xx2 = Array(xx2)
+    x = Array(x)
     
-    # Find common points between x and xx1/xx2
-    if intersect(x, xx1) != []
-        c1 = x .== xx1 
-    else
-        c1 = Int.(zeros(length(x)))
-    end 
-    if intersect(x, xx2) != []
-        c2 = x .== xx2
-    else 
-        c2 = Int.(zeros(length(x)))
-    end
+    # Find uncommon points between x and xx1/xx2
+    c1 = findall(!in(xx1), x)
+    c2 = findall(!in(xx2), x)
 
     # Remove any common points from given support functions 
-    ywT0 = [yywT0[1][c1.==0]]; yU_1 = [yyU_1[1][c1.==0]]; 
-    ywT1 = [yywT1[1][c2.==0]]; yU0 = [yyU0[1][c2.==0]];
-    x1 = x[c1.==0]; x2 = x[c2.==0]
+    ywT0 = [yywT0[1][c1]]; yU_1 = [yyU_1[1][c1]]; 
+    ywT1 = [yywT1[1][c2]]; yU0 = [yyU0[1][c2]];
+    x1 = x[c1]; x2 = x[c2]
 
     # Add extra points to be computed
     x1 = vcat(x1, xx1); perm1 = sortperm(x1); x1 = sort(x1); 
@@ -84,7 +76,7 @@ function mathematica_corrections(λ::Number, μ::Number, η::Number, x::Abstract
         ywT0[1] = tmp[1,:]; yU_1[1] = tmp[2,:];
     else
         for y in xx1
-            # print(y)
+            print("Computing xx1 value: $y. \n")
             a1 = weval(W`Re[1/(2*Pi)*NIntegrate[Pi * BesselJ[0,k]/(λ + η*I*k - μ*I*Sign[k] + Abs[k]) * Exp[I y k], {k,-∞,∞}, WorkingPrecision -> 15, PrecisionGoal -> 12, MaxRecursion -> m]]`;λ=λ,η=η,μ=μ,y=y,m=maxrecursion)
             a1 = parse_mathematica(a1)
 
@@ -99,7 +91,7 @@ function mathematica_corrections(λ::Number, μ::Number, η::Number, x::Abstract
     end
 
     for y in xx2
-        # print(y)
+        print("Computing xx2 value: $y. \n")
         if stabilise==true
             a3 = weval(W`Re[1/(2*Pi)*NIntegrate[(-I)^(N+2) * Pi * BesselJ[N+2,k]/(λ + η*I*k - μ*I*Sign[k] + Abs[k]) * Exp[I y k], {k,-∞,∞}, WorkingPrecision -> 15, PrecisionGoal -> 12, MaxRecursion -> m]]`;λ=λ,η=η,μ=μ,N=N,y=y,m=maxrecursion)
         else
